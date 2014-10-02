@@ -22,9 +22,16 @@ namespace Gizeta.KanColleModifier.KCV
             readModifierData();
             showList();
             setModifier();
-            if (modifierOn)
+            toggle(modifierOn);
+        }
+
+        public static void Initialize()
+        {
+            if(File.Exists("modifier.enable"))
             {
-                Modifier_Switch.Content = "关闭魔改";
+                modifierOn = true;
+                readModifierData();
+                setModifier();
             }
         }
 
@@ -114,22 +121,35 @@ namespace Gizeta.KanColleModifier.KCV
 
         private void Modifier_Switch_Click(object sender, RoutedEventArgs e)
         {
-            if (Modifier_Switch.Content.ToString() == "开启魔改")
-            {
-                modifierOn = true;
-                Modifier_Switch.Content = "关闭魔改";
-            }
-            else
-            {
-                modifierOn = false;
-                Modifier_Switch.Content = "开启魔改";
-            }
+            toggle(Modifier_Switch.Content.ToString() == "开启魔改");
         }
 
         private void Modifier_UpdateList_Click(object sender, RoutedEventArgs e)
         {
             readModifierData();
             showList();
+        }
+
+        private void toggle(bool on)
+        {
+            if(on)
+            {
+                modifierOn = true;
+                Modifier_Switch.Content = "关闭魔改";
+                if(!File.Exists("modifier.enable"))
+                {
+                    File.Create("modifier.enable").Close();
+                }
+            }
+            else
+            {
+                modifierOn = false;
+                Modifier_Switch.Content = "开启魔改";
+                if (File.Exists("modifier.enable"))
+                {
+                    File.Delete("modifier.enable");
+                }
+            }
         }
     }
 }

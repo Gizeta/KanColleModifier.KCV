@@ -56,6 +56,7 @@
     <Compile Include="ModifierView.xaml.cs">
       <DependentUpon>ModifierView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ModifierInitializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
