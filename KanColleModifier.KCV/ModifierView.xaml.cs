@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Text;
 
 namespace Gizeta.KanColleModifier.KCV
 {
@@ -82,11 +83,14 @@ namespace Gizeta.KanColleModifier.KCV
 
         private static void readModifierData()
         {
-            if(File.Exists("魔改.txt"))
+            if (File.Exists("魔改.txt"))
             {
                 data.Clear();
                 var file = File.Open("魔改.txt", FileMode.Open);
-                using (var stream = new StreamReader(file))
+                Encoding enc = getEncoding(file);
+                file.Close();
+                file = File.Open("魔改.txt", FileMode.Open);
+                using (var stream = new StreamReader(file, enc))
                 {
                     while (!stream.EndOfStream)
                     {
@@ -108,6 +112,34 @@ namespace Gizeta.KanColleModifier.KCV
             {
                 modifierOn = false;
             }
+        }
+
+        private static Encoding getEncoding(FileStream fs)
+        {
+            BinaryReader r = new BinaryReader(fs, Encoding.Default);
+            byte[] ss = r.ReadBytes(4);
+            r.Close();
+            if (ss[0] <= 0xEF)
+            {
+                if (ss[0] == 0xEF && ss[1] == 0xBB & ss[2] == 0xBF)
+                {
+                    return Encoding.UTF8;
+                }
+                else if (ss[0] == 0xFE && ss[1] == 0xFF)
+                {
+                    return Encoding.BigEndianUnicode;
+                }
+                else if (ss[0] == 0xFF && ss[1] == 0xFE)
+                {
+                    return Encoding.Unicode;
+                }
+                else
+                {
+                    return Encoding.Default;
+                }
+            }
+            else
+                return Encoding.Default;
         }
 
         private void showList()
