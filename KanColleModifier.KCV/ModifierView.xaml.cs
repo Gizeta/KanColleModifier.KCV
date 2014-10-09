@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Text;
 
 namespace Gizeta.KanColleModifier.KCV
 {
@@ -16,6 +17,10 @@ namespace Gizeta.KanColleModifier.KCV
         private static bool modifierOn = false;
         private static bool hasInitialize = false;
         private static Dictionary<string, string> data = new Dictionary<string, string>();
+        private static string ipAddress = "";
+
+        [DllImport(@"wininet.dll", SetLastError = true)]
+        public static extern long DeleteUrlCacheEntry(string lpszUrlName);
 
         public ModifierView()
         {
@@ -67,6 +72,11 @@ namespace Gizeta.KanColleModifier.KCV
 
         private static void FiddlerApplication_BeforeRequest(Session oSession)
         {
+            if (ipAddress == "" && (oSession.fullUrl.Contains("/kcs/resources") || oSession.fullUrl.Contains("/kcsapi/")))
+            {
+                var ip = oSession.fullUrl.IndexOf("://") + 3;
+                ipAddress = oSession.fullUrl.Substring(ip, oSession.fullUrl.IndexOf("/kcs") - ip);
+            }
             if (modifierOn && oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0)
             {
                 var tmp1 = oSession.fullUrl.Split('/');
@@ -181,6 +191,17 @@ namespace Gizeta.KanColleModifier.KCV
                 {
                     File.Delete("modifier.enable");
                 }
+            }
+        }
+
+        private void Modifier_CleanCache_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in data)
+            {
+                /* KCV竟没给Graph建Model，先偷个懒 */
+                DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=1");
+                DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=2");
+                DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=3");
             }
         }
     }
