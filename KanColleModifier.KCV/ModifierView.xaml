@@ -7,10 +7,10 @@
              d:DesignHeight="300" d:DesignWidth="300">
     <Grid>
         <StackPanel>
-            <Button x:Name="Modifier_Switch" Content="开启魔改" Click="Modifier_Switch_Click"/>
-            <Button x:Name="Modifier_UpdateList" Content="更新魔改列表" Click="Modifier_UpdateList_Click"/>
-            <Button x:Name="Modifier_CleanCache" Content="清除魔改缓存" Click="Modifier_CleanCache_Click"/>
-            <TextBlock x:Name="Modifier_List" Text="魔改文件：" Foreground="White"/>            
+            <Button Content="{Binding ModifierButtonContent}" Command="{Binding SwitchModifierOn}"/>
+            <Button Content="更新魔改列表" Command="{Binding UpdateModifierList}"/>
+            <Button Content="清除魔改缓存" Command="{Binding CleanCache}"/>
+            <TextBlock Text="{Binding ModifierListContent}" Foreground="White"/>
         </StackPanel>
     </Grid>
 </UserControl>
