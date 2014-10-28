@@ -6,7 +6,7 @@ namespace Gizeta.KanColleModifier.KCV
     [Export(typeof(IToolPlugin))]
     [ExportMetadata("Title", "KanColleModifier.KCV")]
     [ExportMetadata("Description", "KanColleViewer舰娘魔改插件。")]
-    [ExportMetadata("Version", "1.1.1")]
+    [ExportMetadata("Version", "1.2.0")]
     [ExportMetadata("Author", "@Gizeta")]
     public class Modifier : IToolPlugin
     {
