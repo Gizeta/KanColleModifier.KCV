@@ -10,6 +10,11 @@ namespace Gizeta.KanColleModifier.KCV
     [ExportMetadata("Author", "@Gizeta")]
     public class Modifier : IToolPlugin
     {
+        public Modifier()
+        {
+            ModifierViewModel.Instance.Initialize();
+        }
+        
         public string ToolName
         {
             get { return "魔改"; }
