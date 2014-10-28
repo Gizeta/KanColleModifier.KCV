@@ -12,8 +12,7 @@ KanColleViewer舰娘魔改插件
 
 使用库
 -----
-* [KanColleViewer](http://grabacr.net/kancolleviewer)
-  KanColleViewer使用MIT协议发布，协议文件见 MIT-LICENSE.txt 。
+* [KanColleViewer](http://grabacr.net/kancolleviewer) - KanColleViewer使用MIT协议发布，协议文件见 MIT-LICENSE.txt 。
 * [FiddlerCore](http://www.telerik.com/fiddler/fiddlercore)
 
 协议
