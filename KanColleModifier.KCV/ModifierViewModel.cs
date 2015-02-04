@@ -181,26 +181,6 @@ namespace Gizeta.KanColleModifier.KCV
         private void setModifier()
         {
             FiddlerApplication.BeforeRequest += FiddlerApplication_BeforeRequest;
-            FiddlerApplication.BeforeResponse += FiddlerApplication_BeforeResponse;
-        }
-
-        private void FiddlerApplication_BeforeResponse(Session oSession)
-        {
-            if (ModifierOn && oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0)
-            {
-                var tmp1 = oSession.fullUrl.Split('/');
-                var tmp2 = tmp1.Last().Split('.');
-                if (tmp2.Length >= 1)
-                {
-                    if (data.ContainsKey(tmp2[0]))
-                    {
-                        oSession.utilDecodeResponse();
-                        oSession.ResponseBody = File.ReadAllBytes(data[tmp2[0]]);
-                        oSession.oResponse.headers.HTTPResponseCode = 200;
-                        oSession.oResponse.headers.HTTPResponseStatus = "200 OK";
-                    }
-                }
-            }
         }
 
         private void FiddlerApplication_BeforeRequest(Session oSession)
@@ -218,7 +198,11 @@ namespace Gizeta.KanColleModifier.KCV
                 {
                     if (data.ContainsKey(tmp2[0]))
                     {
-                        oSession.bBufferResponse = true;
+                        oSession.utilCreateResponseAndBypassServer();
+                        oSession.ResponseBody = File.ReadAllBytes(data[tmp2[0]]);
+                        oSession.oResponse.headers.HTTPResponseCode = 200;
+                        oSession.oResponse.headers.HTTPResponseStatus = "200 OK";
+                        oSession.oResponse.headers["Content-Type"] = "application/x-shockwave-flash";
                     }
                 }
             }
