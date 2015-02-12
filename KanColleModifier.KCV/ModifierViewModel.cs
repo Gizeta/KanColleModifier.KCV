@@ -128,14 +128,13 @@ namespace Gizeta.KanColleModifier.KCV
                     while (!stream.EndOfStream)
                     {
                         var str = stream.ReadLine();
-                        var st = str.LastIndexOf('\\') + 1;
-                        var ed = str.LastIndexOf(".hack.swf");
-                        if (st > 0 && ed > 0)
+                        if(str.EndsWith("\\"))
                         {
-                            if (File.Exists(str))
-                            {
-                                data.Add(str.Substring(st, ed - st), str);
-                            }
+                            addDirectory(str);
+                        }
+                        else
+                        {
+                            addSwfFile(str);
                         }
                     }
                 }
@@ -145,6 +144,38 @@ namespace Gizeta.KanColleModifier.KCV
             else
             {
                 ModifierOn = false;
+            }
+        }
+
+        private void addDirectory(string path)
+        {
+            var folder = new DirectoryInfo(path);
+            if (folder.Exists)
+            {
+                foreach (var file in folder.GetFiles())
+                {
+                    if(file.FullName.EndsWith(".hack.swf"))
+                    {
+                        addSwfFile(file.FullName);
+                    }
+                }
+                foreach (var f in folder.GetDirectories())
+                {
+                    addDirectory(f.FullName);
+                }
+            }
+        }
+
+        private void addSwfFile(string path)
+        {
+            if (File.Exists(path))
+            {
+                var st = path.LastIndexOf('\\') + 1;
+                var ed = path.LastIndexOf(".hack.swf");
+                if (st > 0 && ed > 0)
+                {
+                    data[path.Substring(st, ed - st)] = path;
+                }
             }
         }
 
