@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 
 namespace Gizeta.KanColleModifier.KCV
@@ -14,10 +15,14 @@ namespace Gizeta.KanColleModifier.KCV
         private static ModifierViewModel instance = new ModifierViewModel();
 
         private Dictionary<string, string> data = new Dictionary<string, string>();
+        private Dictionary<string, string> iniData = new Dictionary<string, string>();
         private string ipAddress = "";
 
         [DllImport(@"wininet.dll", SetLastError = true)]
         public static extern long DeleteUrlCacheEntry(string lpszUrlName);
+
+        [DllImport("kernel32", EntryPoint = "GetPrivateProfileStringW", CharSet = CharSet.Unicode)]
+        private static extern int GetPrivateProfileString(string section, string key, string defVal, byte[] retVal, int size, string filePath);
 
         private ModifierViewModel()
         {
@@ -119,6 +124,7 @@ namespace Gizeta.KanColleModifier.KCV
             if (File.Exists("魔改.txt"))
             {
                 data.Clear();
+                iniData.Clear();
                 var file = File.Open("魔改.txt", FileMode.Open);
                 Encoding enc = getEncoding(file);
                 file.Close();
@@ -128,13 +134,17 @@ namespace Gizeta.KanColleModifier.KCV
                     while (!stream.EndOfStream)
                     {
                         var str = stream.ReadLine();
-                        if(str.EndsWith("\\"))
+                        if(str.EndsWith(".hack.swf"))
                         {
-                            addDirectory(str);
+                            addSwfFile(str);
+                        }
+                        else if(str.EndsWith(".config.ini"))
+                        {
+                            addIniFile(str);
                         }
                         else
                         {
-                            addSwfFile(str);
+                            addDirectory(str);
                         }
                     }
                 }
@@ -158,6 +168,10 @@ namespace Gizeta.KanColleModifier.KCV
                     {
                         addSwfFile(file.FullName);
                     }
+                    else if(file.FullName.EndsWith(".config.ini"))
+                    {
+                        addIniFile(file.FullName);
+                    }
                 }
                 foreach (var f in folder.GetDirectories())
                 {
@@ -175,6 +189,19 @@ namespace Gizeta.KanColleModifier.KCV
                 if (st > 0 && ed > 0)
                 {
                     data[path.Substring(st, ed - st)] = path;
+                }
+            }
+        }
+
+        private void addIniFile(string path)
+        {
+            if (File.Exists(path))
+            {
+                var st = path.LastIndexOf('\\') + 1;
+                var ed = path.LastIndexOf(".config.ini");
+                if (st > 0 && ed > 0)
+                {
+                    iniData[path.Substring(st, ed - st)] = path;
                 }
             }
         }
@@ -207,11 +234,88 @@ namespace Gizeta.KanColleModifier.KCV
                 return Encoding.Default;
         }
 
+        private void setShipName(Session oSession, string key, string iniPath)
+        {
+            byte[] sb = new byte[20];
+            int buf = GetPrivateProfileString("info", "ship_name", "", sb, 20, iniPath);
+            string shipName = Encoding.Unicode.GetString(sb, 0, buf * 2).Trim();
+            if (shipName != "")
+            {
+                var str = oSession.GetResponseBodyAsString();
+                var regex = new Regex("api_sortno\":(\\d+),\"api_filename\":\"" + key);
+                string sortno = regex.Match(str).Groups[1].Value;
+                oSession.utilReplaceRegexInResponse("api_sortno\":" + sortno + "(?'1'.+?)api_name\":\"(.+?)\"", "api_sortno\":" + sortno + "${1}api_name\":\"" + shipName + "\"");
+            }
+        }
+
+        private void setShipGraph(Session oSession, string key, string iniPath, string item, string idx)
+        {
+            byte[] sb = new byte[20];
+            int buf = GetPrivateProfileString("graph", item + "_" + idx, "", sb, 20, iniPath);
+            string value = Encoding.Unicode.GetString(sb, 0, buf * 2).Trim();
+            if (value != "")
+            {
+                if(idx == "left")
+                {
+                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "(?'2'\\D+)(\\d+),(?'4'\\d+)", key + "${1}" + item + "${2}" + value + ",${4}");
+                }
+                else if(idx == "top")
+                {
+                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "(?'2'\\D+)(?'3'\\d+),(\\d+)", key + "${1}" + item + "${2}${3}," + value);
+                }
+            }
+        }
+
         #region Fiddler
 
         private void setModifier()
         {
             FiddlerApplication.BeforeRequest += FiddlerApplication_BeforeRequest;
+            FiddlerApplication.BeforeResponse += FiddlerApplication_BeforeResponse;
+        }
+
+        private void FiddlerApplication_BeforeResponse(Session oSession)
+        {
+            if (modifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
+            {
+                foreach(var key in iniData.Keys)
+                {
+                    setShipName(oSession, key, iniData[key]);
+
+                    setShipGraph(oSession, key, iniData[key], "boko_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "boko_n", "top");
+                    setShipGraph(oSession, key, iniData[key], "boko_d", "left");
+                    setShipGraph(oSession, key, iniData[key], "boko_d", "top");
+
+                    setShipGraph(oSession, key, iniData[key], "kaisyu_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "kaisyu_n", "top");
+                    setShipGraph(oSession, key, iniData[key], "kaisyu_d", "left");
+                    setShipGraph(oSession, key, iniData[key], "kaisyu_d", "top");
+
+                    setShipGraph(oSession, key, iniData[key], "kaizo_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "kaizo_n", "top");
+                    setShipGraph(oSession, key, iniData[key], "kaizo_d", "left");
+                    setShipGraph(oSession, key, iniData[key], "kaizo_d", "top");
+
+                    setShipGraph(oSession, key, iniData[key], "map_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "map_n", "top");
+                    setShipGraph(oSession, key, iniData[key], "map_d", "left");
+                    setShipGraph(oSession, key, iniData[key], "map_d", "top");
+
+                    setShipGraph(oSession, key, iniData[key], "ensyuf_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "ensyuf_n", "top");
+                    setShipGraph(oSession, key, iniData[key], "ensyuf_d", "left");
+                    setShipGraph(oSession, key, iniData[key], "ensyuf_d", "top");
+
+                    setShipGraph(oSession, key, iniData[key], "ensyue_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "ensyue_n", "top");
+
+                    setShipGraph(oSession, key, iniData[key], "battle_n", "left");
+                    setShipGraph(oSession, key, iniData[key], "battle_n", "top");
+                    setShipGraph(oSession, key, iniData[key], "battle_d", "left");
+                    setShipGraph(oSession, key, iniData[key], "battle_d", "top");
+                }
+            }
         }
 
         private void FiddlerApplication_BeforeRequest(Session oSession)
@@ -236,6 +340,10 @@ namespace Gizeta.KanColleModifier.KCV
                         oSession.oResponse.headers["Content-Type"] = "application/x-shockwave-flash";
                     }
                 }
+            }
+            if (modifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
+            {
+                oSession.bBufferResponse = true;
             }
         }
 
