@@ -1,5 +1,11 @@
 # 更新日志
 
+## 1.3.0 - 2015-02-13
+
+- [add] 支持读取文件夹中的魔改文件
+- [add] 支持岛风Go的.config.ini文件
+- [fix] 修复部分魔改缓存不能清除的bug
+
 ## 1.2.0 - 2014-10-28
 
 - [update] 移除ModifierInitializer
