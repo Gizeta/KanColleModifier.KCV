@@ -259,11 +259,11 @@ namespace Gizeta.KanColleModifier.KCV
             {
                 if(idx == "left")
                 {
-                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "(?'2'\\D+)(\\d+),(?'4'\\d+)", key + "${1}" + item + "${2}" + value + ",${4}");
+                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "\":\\[(?'2'[\\d-]+),(?'3'[\\d-]+)\\]", key + "${1}" + item + "\":[" + value + ",${3}]");
                 }
                 else if(idx == "top")
                 {
-                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "(?'2'\\D+)(?'3'\\d+),(\\d+)", key + "${1}" + item + "${2}${3}," + value);
+                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "\":\\[(?'2'[\\d-]+),(?'3'[\\d-]+)\\]", key + "${1}" + item + "\":[${2}," + value + "]");
                 }
             }
         }
