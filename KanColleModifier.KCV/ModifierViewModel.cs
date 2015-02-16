@@ -108,12 +108,20 @@ namespace Gizeta.KanColleModifier.KCV
                 {
                     foreach (var item in data)
                     {
-                        /* KCV竟没给Graph建Model，先偷个懒 */
-                        DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=1");
-                        DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=2");
-                        DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=3");
-                        DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=4");
-                        DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=5");
+                        if (item.Key == "font")
+                        {
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/font.swf?version=2.3");
+                        }
+                        else
+                        {
+                            /* KCV竟没给Graph建Model，先偷个懒 */
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=1");
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=2");
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=3");
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=4");
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=5");
+                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=6");
+                        }
                     }
                 });
             }
@@ -343,7 +351,19 @@ namespace Gizeta.KanColleModifier.KCV
                     }
                 }
             }
-            if (modifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
+            if (ModifierOn && oSession.fullUrl.IndexOf("/kcs/resources/swf/font.swf") >= 0)
+            {
+                if (data.ContainsKey("font"))
+                {
+                    System.Windows.MessageBox.Show("font");
+                    oSession.utilCreateResponseAndBypassServer();
+                    oSession.ResponseBody = File.ReadAllBytes(data["font"]);
+                    oSession.oResponse.headers.HTTPResponseCode = 200;
+                    oSession.oResponse.headers.HTTPResponseStatus = "200 OK";
+                    oSession.oResponse.headers["Content-Type"] = "application/x-shockwave-flash";
+                }
+            }
+            if (ModifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
             {
                 oSession.bBufferResponse = true;
             }
