@@ -14,9 +14,9 @@ namespace Gizeta.KanColleModifier.KCV
     {
         private static ModifierViewModel instance = new ModifierViewModel();
 
-        private Dictionary<string, string> data = new Dictionary<string, string>();
-        private Dictionary<string, string> iniData = new Dictionary<string, string>();
+        private List<ModifyInfo> list = new List<ModifyInfo>();
         private string ipAddress = "";
+        private string jsonData = "";
 
         [DllImport(@"wininet.dll", SetLastError = true)]
         public static extern long DeleteUrlCacheEntry(string lpszUrlName);
@@ -54,9 +54,10 @@ namespace Gizeta.KanColleModifier.KCV
             get
             {
                 string str = "魔改文件：";
-                foreach (var d in data)
+                foreach (var d in list)
                 {
-                    str += "\r\n" + d.Value;
+                    if (d.ResourcePath != null)
+                        str += "\r\n" + d.ResourcePath;
                 }
                 return str;
             }
@@ -102,29 +103,7 @@ namespace Gizeta.KanColleModifier.KCV
 
         public ICommand CleanCache
         {
-            get
-            {
-                return new RelayCommand(() =>
-                {
-                    foreach (var item in data)
-                    {
-                        if (item.Key == "font")
-                        {
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/font.swf?version=2.3");
-                        }
-                        else
-                        {
-                            /* KCV竟没给Graph建Model，先偷个懒 */
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=1");
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=2");
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=3");
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=4");
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=5");
-                            DeleteUrlCacheEntry("http://" + ipAddress + "/kcs/resources/swf/ships/" + item.Key + ".swf?VERSION=6");
-                        }
-                    }
-                });
-            }
+            get { return new RelayCommand(() => list.ForEach(x => x.CleanIECache(ipAddress))); }
         }
         
         #region private method
@@ -133,8 +112,7 @@ namespace Gizeta.KanColleModifier.KCV
         {
             if (File.Exists("魔改.txt"))
             {
-                data.Clear();
-                iniData.Clear();
+                list.Clear();
                 var file = File.Open("魔改.txt", FileMode.Open);
                 Encoding enc = getEncoding(file);
                 file.Close();
@@ -198,7 +176,16 @@ namespace Gizeta.KanColleModifier.KCV
                 var ed = path.LastIndexOf(".hack.swf");
                 if (st > 0 && ed > 0)
                 {
-                    data[path.Substring(st, ed - st)] = path;
+                    var graphKey = path.Substring(st, ed - st);
+                    var info = list.FirstOrDefault(x => x.GraphKey == graphKey);
+                    if (info == null)
+                    {
+                        list.Add(new ModifyInfo { GraphKey = graphKey, ResourcePath = path });
+                    }
+                    else
+                    {
+                        info.ResourcePath = path;
+                    }
                 }
             }
         }
@@ -211,7 +198,16 @@ namespace Gizeta.KanColleModifier.KCV
                 var ed = path.LastIndexOf(".config.ini");
                 if (st > 0 && ed > 0)
                 {
-                    iniData[path.Substring(st, ed - st)] = path;
+                    var graphKey = path.Substring(st, ed - st);
+                    var info = list.FirstOrDefault(x => x.GraphKey == graphKey);
+                    if (info == null)
+                    {
+                        list.Add(new ModifyInfo { GraphKey = graphKey, ResourceIniPath = path });
+                    }
+                    else
+                    {
+                        info.ResourceIniPath = path;
+                    }
                 }
             }
         }
@@ -244,36 +240,56 @@ namespace Gizeta.KanColleModifier.KCV
                 return Encoding.Default;
         }
 
-        private void setShipName(Session oSession, string key, string iniPath)
+        private void setModifiedData(Session session, ModifyInfo info)
         {
-            byte[] sb = new byte[20];
-            int buf = GetPrivateProfileString("info", "ship_name", "", sb, 20, iniPath);
-            string shipName = Encoding.Unicode.GetString(sb, 0, buf * 2).Trim();
-            if (shipName != "")
+            if (info.GraphKey == "font") return;
+            
+            string graphStr = Regex.Match(jsonData, @"\{([^{]+?)" + info.GraphKey + @"([^}]+?)\}").Groups[0].Value;
+            string sortNo = Regex.Match(graphStr, @"api_sortno"":(\d+)").Groups[1].Value;
+            string infoStr = Regex.Match(jsonData, @"\{([^{]+?)api_sortno"":" + sortNo + @"([^}]+?)\}").Groups[0].Value;
+
+            info.GraphVersion = Regex.Match(graphStr, @"api_version"":""(.+?)""").Groups[1].Value;
+
+            if (info.ResourceIniPath == null) return;
+            string graphReplaceStr = graphStr;
+            string infoReplaceStr = infoStr;
+
+            var str = getIniValue(info.ResourceIniPath, "info", "ship_name");
+            if (str != "")
             {
-                var str = oSession.GetResponseBodyAsString();
-                var regex = new Regex("api_sortno\":(\\d+),\"api_filename\":\"" + key);
-                string sortno = regex.Match(str).Groups[1].Value;
-                oSession.utilReplaceRegexInResponse("api_sortno\":" + sortno + "(?'1'.+?)api_name\":\"(.+?)\"", "api_sortno\":" + sortno + "${1}api_name\":\"" + shipName + "\"");
+                infoReplaceStr = Regex.Replace(infoReplaceStr, @"api_name"":""(.+?)""", @"api_name"":""" + str + @"""");
             }
+            var modList = new string[] { "boko_n", "boko_d",
+                "kaisyu_n", "kaisyu_d",
+                "kaizo_n", "kaizo_d",
+                "map_n", "map_d",
+                "ensyuf_n", "ensyuf_d",
+                "ensyue_n",
+                "battle_n", "battle_d" };
+            foreach (var mod in modList)
+            {
+                str = getIniValue(info.ResourceIniPath, "graph", mod + "_left");
+                if (str != "")
+                {
+                    graphReplaceStr = Regex.Replace(graphReplaceStr, mod + @""":\[([\d-]+),([\d-]+)\]", mod + @""":[" + str + @",$2]");
+                }
+
+                str = getIniValue(info.ResourceIniPath, "graph", mod + "_top");
+                if (str != "")
+                {
+                    graphReplaceStr = Regex.Replace(graphReplaceStr, mod + @""":\[([\d-]+),([\d-]+)\]", mod + @"_"":[$1," + str + @"]");
+                }
+            }
+
+            jsonData = jsonData.Replace(graphStr, graphReplaceStr);
+            jsonData = jsonData.Replace(infoStr, infoReplaceStr);
         }
 
-        private void setShipGraph(Session oSession, string key, string iniPath, string item, string idx)
+        private string getIniValue(string path, string section, string key)
         {
-            byte[] sb = new byte[20];
-            int buf = GetPrivateProfileString("graph", item + "_" + idx, "", sb, 20, iniPath);
-            string value = Encoding.Unicode.GetString(sb, 0, buf * 2).Trim();
-            if (value != "")
-            {
-                if(idx == "left")
-                {
-                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "\":\\[(?'2'[\\d-]+),(?'3'[\\d-]+)\\]", key + "${1}" + item + "\":[" + value + ",${3}]");
-                }
-                else if(idx == "top")
-                {
-                    oSession.utilReplaceRegexInResponse(key + "(?'1'.+?)" + item + "\":\\[(?'2'[\\d-]+),(?'3'[\\d-]+)\\]", key + "${1}" + item + "\":[${2}," + value + "]");
-                }
-            }
+            var sb = new byte[20];
+            int buf = GetPrivateProfileString(section, key, "", sb, 20, path);
+            return Encoding.Unicode.GetString(sb, 0, buf * 2).Trim();
         }
 
         #region Fiddler
@@ -288,43 +304,11 @@ namespace Gizeta.KanColleModifier.KCV
         {
             if (modifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
             {
-                foreach(var key in iniData.Keys)
-                {
-                    setShipName(oSession, key, iniData[key]);
+                jsonData = oSession.GetResponseBodyAsString();
 
-                    setShipGraph(oSession, key, iniData[key], "boko_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "boko_n", "top");
-                    setShipGraph(oSession, key, iniData[key], "boko_d", "left");
-                    setShipGraph(oSession, key, iniData[key], "boko_d", "top");
+                list.ForEach(x => setModifiedData(oSession, x));
 
-                    setShipGraph(oSession, key, iniData[key], "kaisyu_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "kaisyu_n", "top");
-                    setShipGraph(oSession, key, iniData[key], "kaisyu_d", "left");
-                    setShipGraph(oSession, key, iniData[key], "kaisyu_d", "top");
-
-                    setShipGraph(oSession, key, iniData[key], "kaizo_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "kaizo_n", "top");
-                    setShipGraph(oSession, key, iniData[key], "kaizo_d", "left");
-                    setShipGraph(oSession, key, iniData[key], "kaizo_d", "top");
-
-                    setShipGraph(oSession, key, iniData[key], "map_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "map_n", "top");
-                    setShipGraph(oSession, key, iniData[key], "map_d", "left");
-                    setShipGraph(oSession, key, iniData[key], "map_d", "top");
-
-                    setShipGraph(oSession, key, iniData[key], "ensyuf_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "ensyuf_n", "top");
-                    setShipGraph(oSession, key, iniData[key], "ensyuf_d", "left");
-                    setShipGraph(oSession, key, iniData[key], "ensyuf_d", "top");
-
-                    setShipGraph(oSession, key, iniData[key], "ensyue_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "ensyue_n", "top");
-
-                    setShipGraph(oSession, key, iniData[key], "battle_n", "left");
-                    setShipGraph(oSession, key, iniData[key], "battle_n", "top");
-                    setShipGraph(oSession, key, iniData[key], "battle_d", "left");
-                    setShipGraph(oSession, key, iniData[key], "battle_d", "top");
-                }
+                oSession.utilSetResponseBody(jsonData);
             }
         }
 
@@ -335,37 +319,20 @@ namespace Gizeta.KanColleModifier.KCV
                 var ip = oSession.fullUrl.IndexOf("://") + 3;
                 ipAddress = oSession.fullUrl.Substring(ip, oSession.fullUrl.IndexOf("/kcs") - ip);
             }
-            if (ModifierOn && oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0)
-            {
-                var tmp1 = oSession.fullUrl.Split('/');
-                var tmp2 = tmp1.Last().Split('.');
-                if (tmp2.Length >= 1)
-                {
-                    if (data.ContainsKey(tmp2[0]))
-                    {
-                        oSession.utilCreateResponseAndBypassServer();
-                        oSession.ResponseBody = File.ReadAllBytes(data[tmp2[0]]);
-                        oSession.oResponse.headers.HTTPResponseCode = 200;
-                        oSession.oResponse.headers.HTTPResponseStatus = "200 OK";
-                        oSession.oResponse.headers["Content-Type"] = "application/x-shockwave-flash";
-                    }
-                }
-            }
-            if (ModifierOn && oSession.fullUrl.IndexOf("/kcs/resources/swf/font.swf") >= 0)
-            {
-                if (data.ContainsKey("font"))
-                {
-                    System.Windows.MessageBox.Show("font");
-                    oSession.utilCreateResponseAndBypassServer();
-                    oSession.ResponseBody = File.ReadAllBytes(data["font"]);
-                    oSession.oResponse.headers.HTTPResponseCode = 200;
-                    oSession.oResponse.headers.HTTPResponseStatus = "200 OK";
-                    oSession.oResponse.headers["Content-Type"] = "application/x-shockwave-flash";
-                }
-            }
-            if (ModifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
+            if (modifierOn && oSession.fullUrl.IndexOf("/kcsapi/api_start2") >= 0)
             {
                 oSession.bBufferResponse = true;
+                return;
+            }
+            if (ModifierOn && (oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0 || oSession.fullUrl.IndexOf("/kcs/resources/swf/font.swf") >= 0))
+            {
+                var info = list.First(x => x.HitTest(oSession.fullUrl));
+                if (info.GraphKey == "font")
+                {
+                    info.GraphVersion = Regex.Match(oSession.fullUrl, @"version=([\d.]+)").Groups[1].Value;
+                }
+                if (info != null)
+                    info.ReplaceResponseBody(oSession);
             }
         }
 
@@ -387,5 +354,46 @@ namespace Gizeta.KanColleModifier.KCV
         }
 
         #endregion
+
+        internal class ModifyInfo
+        {
+            public string GraphKey { get; set; }
+            public string GraphVersion { get; set; }
+            public string ResourcePath { get; set; }
+            public string ResourceIniPath { get; set; }
+
+            public bool HitTest(string url)
+            {
+                var tmp1 = url.Split('/');
+                var tmp2 = tmp1.Last().Split('.');
+                if (tmp2.Length >= 1)
+                {
+                    return tmp2[0] == this.GraphKey;
+                }
+                return false;
+            }
+
+            public void ReplaceResponseBody(Session session)
+            {
+                session.utilCreateResponseAndBypassServer();
+                session.ResponseBody = File.ReadAllBytes(this.ResourcePath);
+                session.oResponse.headers.HTTPResponseCode = 200;
+                session.oResponse.headers.HTTPResponseStatus = "200 OK";
+                session.oResponse.headers["Content-Type"] = "application/x-shockwave-flash";
+            }
+
+            public void CleanIECache(string ipAddress)
+            {
+                if (ipAddress == "" || ResourcePath == null) return;
+                if (this.GraphKey == "font")
+                {
+                    DeleteUrlCacheEntry(string.Format("http://{0}/kcs/resources/swf/font.swf?version={1}", ipAddress, this.GraphVersion));
+                }
+                else
+                {
+                    DeleteUrlCacheEntry(string.Format("http://{0}/kcs/resources/swf/ships/{1}.swf?VERSION={2}", ipAddress, this.GraphKey, this.GraphVersion));
+                }
+            }
+        }
     }
 }
