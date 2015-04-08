@@ -402,7 +402,7 @@ namespace Gizeta.KanColleModifier.KCV
             }
             if (ModifierOn && (oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0 || oSession.fullUrl.IndexOf("/kcs/resources/swf/font.swf") >= 0))
             {
-                var info = list.First(x => x.HitTest(oSession.fullUrl));
+                var info = list.FirstOrDefault(x => x.HitTest(oSession.fullUrl));
                 if (info != null)
                     info.ReplaceResponseBody(oSession);
             }
