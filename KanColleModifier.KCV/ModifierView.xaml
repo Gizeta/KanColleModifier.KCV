@@ -10,7 +10,9 @@
             <Button Content="{Binding ModifierButtonContent}" Command="{Binding SwitchModifierOn}"/>
             <Button Content="更新魔改列表" Command="{Binding UpdateModifierList}"/>
             <Button Content="清除魔改缓存" Command="{Binding CleanCache}"/>
-            <TextBlock Text="{Binding ModifierListContent}" Foreground="White"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Hidden">
+                <TextBlock Text="{Binding ModifierListContent}" Foreground="White"/>
+            </ScrollViewer>
         </StackPanel>
     </Grid>
 </UserControl>
