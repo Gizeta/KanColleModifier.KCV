@@ -166,6 +166,11 @@ namespace Gizeta.KanColleModifier.KCV
                         {
                             addIniFile(str);
                         }
+                        else if (str.EndsWith("kcs_flash.hack.js"))
+                        {
+                            if(File.Exists(str))
+                                list.Add(new ModifyInfo { GraphKey = "kcs_flash", ResourcePath = str });
+                        }
                         else
                         {
                             addDirectory(str);
@@ -206,6 +211,10 @@ namespace Gizeta.KanColleModifier.KCV
                     else if(file.FullName.EndsWith(".config.ini"))
                     {
                         addIniFile(file.FullName);
+                    }
+                    else if (file.Name == "kcs_flash.hack.js")
+                    {
+                        list.Add(new ModifyInfo { GraphKey = "kcs_flash", ResourcePath = file.FullName });
                     }
                 }
                 foreach (var f in folder.GetDirectories())
@@ -289,13 +298,12 @@ namespace Gizeta.KanColleModifier.KCV
 
         private void setModifiedData(Session session, ModifyInfo info)
         {
-            if (info.GraphKey == "font") return;
+            if (info.GraphKey == "font" || info.GraphKey == "kcs_flash" || info.ResourceIniPath == null) return;
             
             string graphStr = Regex.Match(jsonData, @"\{([^{]+?)" + info.GraphKey + @"([^}]+?)\}").Groups[0].Value;
             string sortNo = Regex.Match(graphStr, @"api_sortno"":(\d+)").Groups[1].Value;
             string infoStr = Regex.Match(jsonData, @"\{([^{]+?)api_sortno"":" + sortNo + @"([^}]+?)\}").Groups[0].Value;
 
-            if (info.ResourceIniPath == null) return;
             string graphReplaceStr = graphStr;
             string infoReplaceStr = infoStr;
 
@@ -357,7 +365,7 @@ namespace Gizeta.KanColleModifier.KCV
             {
                 CacheItem = (INTERNET_CACHE_ENTRY_INFO)Marshal.PtrToStructure(buf, typeof(INTERNET_CACHE_ENTRY_INFO));
                 string url = Marshal.PtrToStringAnsi(CacheItem.lpszSourceUrlName);
-                if (url.IndexOf(ipAddress) >= 0 && (url.IndexOf("/kcs/resources/swf/ships/") >= 0 || url.IndexOf("/kcs/resources/swf/font.swf") >= 0))
+                if (url.IndexOf(ipAddress) >= 0 && (url.IndexOf("/kcs/resources/swf/ships/") >= 0 || url.IndexOf("/kcs/resources/swf/font.swf") >= 0 || url.IndexOf("/gadget/js/kcs_flash.js") >= 0))
                 {
                     if (list.Any(x => x.HitTest(url)))
                     {
@@ -414,7 +422,7 @@ namespace Gizeta.KanColleModifier.KCV
                 oSession.bBufferResponse = true;
                 return;
             }
-            if (ModifierOn && (oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0 || oSession.fullUrl.IndexOf("/kcs/resources/swf/font.swf") >= 0))
+            if (ModifierOn && (oSession.fullUrl.IndexOf("/kcs/resources/swf/ships/") >= 0 || oSession.fullUrl.IndexOf("/kcs/resources/swf/font.swf") >= 0 || oSession.fullUrl.IndexOf("/gadget/js/kcs_flash.js") >= 0))
             {
                 var info = list.FirstOrDefault(x => x.HitTest(oSession.fullUrl));
                 if (info != null)
