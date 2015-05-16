@@ -154,8 +154,11 @@ namespace Gizeta.KanColleModifier.KCV
                 {
                     while (!stream.EndOfStream)
                     {
-                        var str = stream.ReadLine();
-                        if(str.EndsWith(".hack.swf"))
+                        var str = pickUpData(stream.ReadLine());
+
+                        if (str.Length == 0) continue;
+
+                        if (str.EndsWith(".hack.swf"))
                         {
                             addSwfFile(str);
                         }
@@ -176,6 +179,17 @@ namespace Gizeta.KanColleModifier.KCV
             {
                 ModifierOn = false;
             }
+        }
+
+        private string pickUpData(string str)
+        {
+            if (str[0] == '#') return "";
+
+            var last = str.IndexOf(" #");
+            if (last > 0)
+                return str.Substring(0, last);
+            else
+                return str;
         }
 
         private void addDirectory(string path)
