@@ -2,6 +2,8 @@ KanColleModifier.KCV
 ====================
 KanColleViewer舰娘魔改插件
 
+**插件已不再开发新功能，建议使用[KanColleCacher](https://github.com/Gizeta/KanColleCacher)替代**
+
 使用方法
 -------
 * 将KanColleModifier.KCV.dll放入KanColleViewer的Plugin目录中。
